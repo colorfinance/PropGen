@@ -220,8 +220,13 @@ export default function App() {
   const handleLogin = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
+      if (error.code === 'auth/unauthorized-domain') {
+        alert('This domain is not authorized in Firebase. Please add your Vercel domain to "Authorized domains" in the Firebase Console.');
+      } else {
+        alert('Login failed: ' + error.message);
+      }
     }
   };
 
