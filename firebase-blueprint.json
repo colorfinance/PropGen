@@ -1,0 +1,74 @@
+{
+  "entities": {
+    "Proposal": {
+      "title": "Proposal",
+      "description": "A generated fuel delivery proposal",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Owner's user ID" },
+        "clientName": { "type": "string", "description": "Name of the client" },
+        "clientEmail": { "type": "string", "description": "Email of the client" },
+        "value": { "type": "number", "description": "Estimated contract value" },
+        "status": { "type": "string", "enum": ["draft", "sent", "accepted", "declined"] },
+        "date": { "type": "string", "description": "Display date of the proposal" },
+        "content": { "type": "string", "description": "Markdown content of the proposal" },
+        "branding": {
+          "type": "object",
+          "properties": {
+            "primaryColor": { "type": "string" },
+            "logoUrl": { "type": "string" }
+          }
+        },
+        "pricingItems": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": { "type": "string" },
+              "quantity": { "type": "number" },
+              "price": { "type": "number" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "clientName", "status", "date", "content", "branding", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User branding and AI configuration",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "companyName": { "type": "string" },
+        "website": { "type": "string" },
+        "branding": {
+          "type": "object",
+          "properties": {
+            "primaryColor": { "type": "string" },
+            "logoUrl": { "type": "string" }
+          }
+        },
+        "aiConfig": {
+          "type": "object",
+          "properties": {
+            "toneOfVoice": { "type": "string" },
+            "companyBackground": { "type": "string" }
+          }
+        },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "companyName", "branding", "aiConfig", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "proposals": {
+      "schema": "Proposal",
+      "description": "Collection of all generated proposals"
+    },
+    "users": {
+      "schema": "UserProfile",
+      "description": "User profiles and branding data"
+    }
+  }
+}
