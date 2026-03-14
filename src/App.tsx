@@ -372,7 +372,11 @@ export default function App() {
     setPricingItems(newItems);
     
     // Update estimated value automatically
-    const total = newItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const total = newItems.reduce((acc, item) => {
+      const price = Number.isNaN(item.price) ? 0 : item.price;
+      const qty = Number.isNaN(item.quantity) ? 0 : item.quantity;
+      return acc + (price * qty);
+    }, 0);
     setEstimatedValue(total.toString());
   };
 
@@ -727,15 +731,15 @@ export default function App() {
                                 <input 
                                   type="number"
                                   placeholder="Qty"
-                                  value={item.quantity}
-                                  onChange={(e) => updatePricingItem(idx, 'quantity', parseInt(e.target.value))}
+                                  value={Number.isNaN(item.quantity) ? '' : item.quantity}
+                                  onChange={(e) => updatePricingItem(idx, 'quantity', e.target.value === '' ? NaN : parseInt(e.target.value))}
                                   className="w-16 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium border-none focus:ring-1 focus:ring-emerald-500"
                                 />
                                 <input 
                                   type="number"
                                   placeholder="Price"
-                                  value={item.price}
-                                  onChange={(e) => updatePricingItem(idx, 'price', parseFloat(e.target.value))}
+                                  value={Number.isNaN(item.price) ? '' : item.price}
+                                  onChange={(e) => updatePricingItem(idx, 'price', e.target.value === '' ? NaN : parseFloat(e.target.value))}
                                   className="w-20 px-3 py-2 bg-gray-50 rounded-lg text-xs font-medium border-none focus:ring-1 focus:ring-emerald-500"
                                 />
                                 <button 
@@ -942,7 +946,7 @@ const InputGroup = ({ label, value, onChange, placeholder, type = 'text', requir
     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{label}</label>
     <input
       type={type}
-      value={value}
+      value={value === null || value === undefined || (typeof value === 'number' && Number.isNaN(value)) ? '' : value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       className="w-full px-4 py-3 rounded-xl bg-gray-50 border-none text-sm font-medium focus:ring-2 focus:ring-emerald-500 transition-all"
