@@ -48,8 +48,10 @@ import { twMerge } from 'tailwind-merge';
 import { 
   auth, 
   db, 
-  googleProvider, 
-  signInWithPopup, 
+  sendSignInLinkToEmail,
+  isSignInWithEmailLink,
+  signInWithEmailLink,
+  signInAnonymously,
   signOut, 
   onAuthStateChanged, 
   collection, 
@@ -62,6 +64,7 @@ import {
   updateDoc,
   doc, 
   getDoc,
+  getDocFromServer,
   serverTimestamp,
   handleFirestoreError,
   OperationType,
@@ -169,6 +172,42 @@ export default function App() {
 
   // Auth Listener
   React.useEffect(() => {
+    // Connection Test
+    const testConnection = async () => {
+      try {
+        await getDocFromServer(doc(db, 'test', 'connection'));
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('the client is offline')) {
+          console.error("Please check your Firebase configuration. The client is offline.");
+        }
+      }
+    };
+    testConnection();
+
+    // Handle Magic Link Sign-in
+    const handleMagicLinkSignIn = async () => {
+      if (isSignInWithEmailLink(auth, window.location.href)) {
+        let email = window.localStorage.getItem('emailForSignIn');
+        if (!email) {
+          email = window.prompt('Please provide your email for confirmation');
+        }
+        if (email) {
+          setIsAuthLoading(true);
+          try {
+            await signInWithEmailLink(auth, email, window.location.href);
+            window.localStorage.removeItem('emailForSignIn');
+            // Clean up URL
+            window.history.replaceState({}, '', window.location.pathname);
+          } catch (error: any) {
+            console.error('Magic link error:', error);
+            alert('Error signing in with magic link: ' + error.message);
+            setIsAuthLoading(false);
+          }
+        }
+      }
+    };
+    handleMagicLinkSignIn();
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
       if (user) {
@@ -217,16 +256,25 @@ export default function App() {
     return () => unsubscribe();
   }, [user]);
 
-  const handleLogin = async () => {
+  const handleBypassLogin = async (email: string) => {
+    setIsAuthLoading(true);
     try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error: any) {
-      console.error('Login error:', error);
-      if (error.code === 'auth/unauthorized-domain') {
-        alert('This domain is not authorized in Firebase. Please add your Vercel domain to "Authorized domains" in the Firebase Console.');
-      } else {
-        alert('Login failed: ' + error.message);
+      // Sign in anonymously to get a UID
+      const cred = await signInAnonymously(auth);
+      // Store the email in localStorage so Onboarding can pick it up if needed, 
+      // or we can just use it to initialize the profile
+      window.localStorage.setItem('guestEmail', email);
+      
+      // Check if profile exists (unlikely for new anonymous user, but good for persistence)
+      const profileDoc = await getDoc(doc(db, 'users', cred.user.uid));
+      if (!profileDoc.exists()) {
+        // We'll let Onboarding handle the creation, but we've bypassed the "check your email" step
       }
+    } catch (error: any) {
+      console.error('Bypass login error:', error);
+      alert('Error starting session: ' + error.message);
+    } finally {
+      setIsAuthLoading(false);
     }
   };
 
@@ -417,7 +465,7 @@ export default function App() {
   };
 
   if (!user && !isAuthLoading) {
-    return <LandingPage onStart={handleLogin} isAuthLoading={isAuthLoading} />;
+    return <LandingPage onStart={handleBypassLogin} isAuthLoading={isAuthLoading} />;
   }
 
   if (user && !profile && !isAuthLoading) {

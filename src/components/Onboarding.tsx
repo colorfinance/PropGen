@@ -29,18 +29,21 @@ export const Onboarding: React.FC<Props> = ({ uid, onComplete }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const [profileData, setProfileData] = useState<Partial<UserProfile>>({
-    uid,
-    companyName: '',
-    website: '',
-    branding: {
-      primaryColor: FUEL_DROP_BRANDING.primary,
-      logoUrl: ''
-    },
-    aiConfig: {
-      toneOfVoice: 'Professional & Persuasive',
-      companyBackground: ''
-    }
+  const [profileData, setProfileData] = useState<Partial<UserProfile>>(() => {
+    const guestEmail = window.localStorage.getItem('guestEmail') || '';
+    return {
+      uid,
+      companyName: '',
+      website: '',
+      branding: {
+        primaryColor: FUEL_DROP_BRANDING.primary,
+        logoUrl: ''
+      },
+      aiConfig: {
+        toneOfVoice: 'Professional & Persuasive',
+        companyBackground: ''
+      }
+    };
   });
 
   const handleComplete = async () => {
