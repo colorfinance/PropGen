@@ -126,7 +126,11 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 }
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    // Check if we have a saved session in localStorage for testing
+    const saved = window.localStorage.getItem('test_user');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [history, setHistory] = useState<ProposalData[]>([]);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -186,31 +190,14 @@ export default function App() {
 
     // Handle Magic Link Sign-in
     const handleMagicLinkSignIn = async () => {
-      if (isSignInWithEmailLink(auth, window.location.href)) {
-        let email = window.localStorage.getItem('emailForSignIn');
-        if (!email) {
-          email = window.prompt('Please provide your email for confirmation');
-        }
-        if (email) {
-          setIsAuthLoading(true);
-          try {
-            await signInWithEmailLink(auth, email, window.location.href);
-            window.localStorage.removeItem('emailForSignIn');
-            // Clean up URL
-            window.history.replaceState({}, '', window.location.pathname);
-          } catch (error: any) {
-            console.error('Magic link error:', error);
-            alert('Error signing in with magic link: ' + error.message);
-            setIsAuthLoading(false);
-          }
-        }
-      }
+      // Bypassed for testing
     };
     handleMagicLinkSignIn();
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-      if (user) {
+    // In testing mode, we don't need the real auth listener
+    // But we'll keep it for profile loading if a user is set
+    if (user) {
+      const loadProfile = async () => {
         try {
           const profileDoc = await getDoc(doc(db, 'users', user.uid));
           if (profileDoc.exists()) {
@@ -220,15 +207,15 @@ export default function App() {
             setLogoUrl(profileData.branding.logoUrl);
           }
         } catch (error) {
-          handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
+          console.error('Profile load error:', error);
         }
-      } else {
-        setProfile(null);
-      }
+        setIsAuthLoading(false);
+      };
+      loadProfile();
+    } else {
       setIsAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+    }
+  }, [user]);
 
   // History Listener
   React.useEffect(() => {
@@ -258,35 +245,26 @@ export default function App() {
 
   const handleBypassLogin = async (email: string) => {
     setIsAuthLoading(true);
-    try {
-      // Sign in anonymously to get a UID
-      const cred = await signInAnonymously(auth);
-      // Store the email in localStorage so Onboarding can pick it up if needed, 
-      // or we can just use it to initialize the profile
-      window.localStorage.setItem('guestEmail', email);
-      
-      // Check if profile exists (unlikely for new anonymous user, but good for persistence)
-      const profileDoc = await getDoc(doc(db, 'users', cred.user.uid));
-      if (!profileDoc.exists()) {
-        // We'll let Onboarding handle the creation, but we've bypassed the "check your email" step
-      }
-    } catch (error: any) {
-      console.error('Bypass login error:', error);
-      alert('Error starting session: ' + error.message);
-    } finally {
-      setIsAuthLoading(false);
-    }
+    // Mock user for testing
+    const mockUser = {
+      uid: 'guest_' + Math.random().toString(36).substr(2, 9),
+      email: email,
+      displayName: email.split('@')[0]
+    } as User;
+    
+    setUser(mockUser);
+    window.localStorage.setItem('test_user', JSON.stringify(mockUser));
+    window.localStorage.setItem('guestEmail', email);
+    setIsAuthLoading(false);
   };
 
   const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      setProposal(null);
-      resetBranding();
-      setView('dashboard');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
+    setUser(null);
+    window.localStorage.removeItem('test_user');
+    setProfile(null);
+    setProposal(null);
+    resetBranding();
+    setView('dashboard');
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
