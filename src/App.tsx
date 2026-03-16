@@ -198,18 +198,23 @@ export default function App() {
     // But we'll keep it for profile loading if a user is set
     if (user) {
       const loadProfile = async () => {
+        console.log('Loading profile for user:', user.uid);
         try {
           const profileDoc = await getDoc(doc(db, 'users', user.uid));
           if (profileDoc.exists()) {
+            console.log('Profile found:', profileDoc.data());
             const profileData = profileDoc.data() as UserProfile;
             setProfile(profileData);
             setPrimaryColor(profileData.branding.primaryColor);
             setLogoUrl(profileData.branding.logoUrl);
+          } else {
+            console.log('No profile found for user');
           }
         } catch (error) {
           console.error('Profile load error:', error);
+        } finally {
+          setIsAuthLoading(false);
         }
-        setIsAuthLoading(false);
       };
       loadProfile();
     } else {
@@ -286,7 +291,10 @@ export default function App() {
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clientName || !plan || !price) return;
+    if (!clientName || !plan || !price) {
+      alert('Please fill in all required fields (Client Name, Service Plan, and Price).');
+      return;
+    }
 
     setIsGenerating(true);
     try {
@@ -331,8 +339,9 @@ export default function App() {
       
       setProposal(newProposal);
       setActiveTab('preview');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Generation error:', error);
+      alert('Failed to generate proposal: ' + (error.message || 'Unknown error'));
     } finally {
       setIsGenerating(false);
     }
@@ -442,7 +451,18 @@ export default function App() {
     }
   };
 
-  if (!user && !isAuthLoading) {
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin mx-auto" />
+          <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Initializing Engine...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
     return <LandingPage onStart={handleBypassLogin} isAuthLoading={isAuthLoading} />;
   }
 

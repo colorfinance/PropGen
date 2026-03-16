@@ -57,8 +57,12 @@ export const Onboarding: React.FC<Props> = ({ uid, onComplete }) => {
 
       await setDoc(doc(db, 'users', uid), finalProfile);
       onComplete(finalProfile);
-    } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, `users/${uid}`);
+    } catch (err: any) {
+      console.error('Onboarding error:', err);
+      setError(err.message || 'Failed to save profile. Please try again.');
+      // Don't call handleFirestoreError here as it throws and we want to handle it locally to show the error message
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -163,14 +167,30 @@ export const Onboarding: React.FC<Props> = ({ uid, onComplete }) => {
               </div>
             </div>
 
-            <button
-              onClick={() => setStep('ai-training')}
-              disabled={!profileData.companyName}
-              className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-slate-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl"
-            >
-              Continue to AI Training
-              <ArrowRight className="w-5 h-5" />
-            </button>
+            <div className="flex gap-4">
+              <button
+                onClick={() => setStep('ai-training')}
+                disabled={!profileData.companyName}
+                className="flex-1 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-slate-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl"
+              >
+                Continue to AI Training
+                <ArrowRight className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => {
+                  setProfileData({
+                    ...profileData,
+                    companyName: 'Fuel Drop Guest',
+                    branding: { primaryColor: FUEL_DROP_BRANDING.primary, logoUrl: '' },
+                    aiConfig: { toneOfVoice: 'Professional', companyBackground: 'Fuel delivery services.' }
+                  });
+                  setStep('finalizing');
+                }}
+                className="px-6 py-5 bg-slate-100 text-slate-400 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-200 transition-all"
+              >
+                Skip
+              </button>
+            </div>
           </motion.div>
         );
 
@@ -229,13 +249,21 @@ export const Onboarding: React.FC<Props> = ({ uid, onComplete }) => {
               </div>
             </div>
 
-            <button
-              onClick={() => setStep('finalizing')}
-              className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-slate-800 transition-all flex items-center justify-center gap-3 shadow-xl"
-            >
-              Review & Launch
-              <ArrowRight className="w-5 h-5" />
-            </button>
+            <div className="flex gap-4">
+              <button
+                onClick={() => setStep('finalizing')}
+                className="flex-1 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-slate-800 transition-all flex items-center justify-center gap-3 shadow-xl"
+              >
+                Review & Launch
+                <ArrowRight className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setStep('finalizing')}
+                className="px-6 py-5 bg-slate-100 text-slate-400 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-200 transition-all"
+              >
+                Skip
+              </button>
+            </div>
           </motion.div>
         );
 

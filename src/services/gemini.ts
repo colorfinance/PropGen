@@ -7,8 +7,12 @@ export async function generateProposalContent(
   companyBackground?: string, 
   toneOfVoice?: string
 ) {
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
-  const model = "gemini-3.1-pro-preview";
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("Gemini API key is missing. Please configure it in the Secrets panel.");
+  }
+  const ai = new GoogleGenAI({ apiKey });
+  const model = "gemini-3-flash-preview";
   
   const defaultCompanyInfo = `
     - Name: Fuel Drop
@@ -48,14 +52,16 @@ export async function generateProposalContent(
     Do not include placeholders like [Insert Date].
   `;
 
+  console.log("Generating proposal with model:", model);
   try {
     const response = await ai.models.generateContent({
       model,
-      contents: prompt,
+      contents: [{ parts: [{ text: prompt }] }],
     });
+    console.log("Gemini response received:", response);
     return response.text || "Failed to generate proposal content.";
   } catch (error) {
     console.error("Error generating proposal:", error);
-    return "Error generating proposal. Please try again.";
+    throw error;
   }
 }
