@@ -14,9 +14,12 @@ import {
   Lock,
   Loader2,
   LogIn,
-  Download
+  Download,
+  Chrome
 } from 'lucide-react';
 import { FUEL_DROP_BRANDING } from '../types';
+import { auth } from '../firebase';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
 interface Props {
   onStart: (email: string) => void;
@@ -25,6 +28,16 @@ interface Props {
 
 export const LandingPage: React.FC<Props> = ({ onStart, isAuthLoading }) => {
   const [email, setEmail] = React.useState('');
+
+  const handleGoogleSignIn = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error('Google Sign-in error:', error);
+      alert('Failed to sign in with Google.');
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,6 +157,25 @@ export const LandingPage: React.FC<Props> = ({ onStart, isAuthLoading }) => {
                     )}
                   </button>
                 </div>
+
+                <div className="relative py-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-200"></div>
+                  </div>
+                  <div className="relative flex justify-center text-[10px] font-black uppercase tracking-widest">
+                    <span className="bg-white px-4 text-slate-400">Or continue with</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={isAuthLoading}
+                  className="w-full py-5 rounded-full border-2 border-slate-100 font-bold text-slate-600 flex items-center justify-center gap-3 hover:bg-slate-50 transition-all"
+                >
+                  <Chrome className="w-5 h-5 text-emerald-500" />
+                  Sign in with Google
+                </button>
               </form>
 
               <div className="flex flex-col gap-4">
