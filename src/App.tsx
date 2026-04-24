@@ -126,7 +126,10 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 }
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    const saved = window.localStorage.getItem('test_user');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [history, setHistory] = useState<ProposalData[]>([]);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -170,16 +173,32 @@ export default function App() {
     return matchesSearch && matchesStatus;
   });
 
-  // Auth Listener
+  // Auth & Data Initializer
   React.useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      console.log('Auth state changed:', currentUser?.uid);
-      setUser(currentUser);
-      
-      if (currentUser) {
+    let isMounted = true;
+    let unsubscribeProposals: (() => void) | null = null;
+
+    const initialize = async () => {
+      // Safety timeout: ensure loading screen clears within 5 seconds regardless of network
+      const safetyTimeout = setTimeout(() => {
+        if (isMounted) setIsAuthLoading(false);
+      }, 5000);
+
+      try {
+        if (!user) {
+          setProfile(null);
+          setHistory([]);
+          if (isMounted) setIsAuthLoading(false);
+          clearTimeout(safetyTimeout);
+          return;
+        }
+
+        console.log('Initializing app for user:', user.uid);
+        
+        // 1. Load Profile (One-time fetch with timeout)
         try {
-          const profileDoc = await getDoc(doc(db, 'users', currentUser.uid));
-          if (profileDoc.exists()) {
+          const profileDoc = await getDoc(doc(db, 'users', user.uid));
+          if (isMounted && profileDoc.exists()) {
             const profileData = profileDoc.data() as UserProfile;
             setProfile(profileData);
             setPrimaryColor(profileData.branding.primaryColor);
@@ -188,81 +207,79 @@ export default function App() {
         } catch (error) {
           console.error('Profile load error:', error);
         }
-      } else {
-        setProfile(null);
-        setHistory([]);
+
+        // 2. Set up History Listener
+        const q = query(
+          collection(db, 'proposals'),
+          where('uid', '==', user.uid),
+          orderBy('createdAt', 'desc')
+        );
+        
+        unsubscribeProposals = onSnapshot(q, (snapshot) => {
+          if (!isMounted) return;
+          const docs = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          })) as ProposalData[];
+          setHistory(docs);
+        }, (error) => {
+          console.error('History fetch error:', error);
+        });
+
+      } catch (error) {
+        console.error('Initialization error:', error);
+      } finally {
+        if (isMounted) {
+          setIsAuthLoading(false);
+          clearTimeout(safetyTimeout);
+        }
       }
-      setIsAuthLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
-  }, []);
+    initialize();
 
-  // Connection Test
+    return () => {
+      isMounted = false;
+      if (unsubscribeProposals) unsubscribeProposals();
+    };
+  }, [user]);
+
+  // Connection Test (Non-blocking)
   React.useEffect(() => {
     const testConnection = async () => {
       try {
+        // Reduced timeout check
         await getDocFromServer(doc(db, 'test', 'connection'));
       } catch (error) {
-        if (error instanceof Error && error.message.includes('the client is offline')) {
-          console.error("Please check your Firebase configuration. The client is offline.");
-        }
+        console.warn("Firebase Connection Test:", error);
       }
     };
     testConnection();
   }, []);
 
-  // History Listener
-  React.useEffect(() => {
-    if (!user) {
-      setHistory([]);
-      return;
-    }
-
-    const q = query(
-      collection(db, 'proposals'),
-      where('uid', '==', user.uid),
-      orderBy('createdAt', 'desc')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as ProposalData[];
-      setHistory(docs);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'proposals');
-    });
-
-    return () => unsubscribe();
-  }, [user]);
-
   const handleBypassLogin = async (email: string) => {
     setIsAuthLoading(true);
-    try {
-      // Use anonymous auth as a "bypass" that still provides a valid Firebase UID
-      // We'll store the email in localStorage to use during onboarding
-      window.localStorage.setItem('guestEmail', email);
-      await signInAnonymously(auth);
-    } catch (error) {
-      console.error('Auth error:', error);
-      alert('Failed to sign in. Please try again.');
-      setIsAuthLoading(false);
-    }
+    // Create a mock user object
+    const mockUser = {
+      uid: 'guest_' + btoa(email).replace(/=/g, '').slice(0, 16),
+      email: email,
+      displayName: email.split('@')[0]
+    } as any;
+    
+    setUser(mockUser);
+    window.localStorage.setItem('test_user', JSON.stringify(mockUser));
+    window.localStorage.setItem('guestEmail', email);
+    setIsAuthLoading(false);
   };
 
   const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      window.localStorage.removeItem('guestEmail');
-      setProfile(null);
-      setProposal(null);
-      resetBranding();
-      setView('dashboard');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
+    setUser(null);
+    window.localStorage.removeItem('test_user');
+    window.localStorage.removeItem('guestEmail');
+    setProfile(null);
+    setProposal(null);
+    resetBranding();
+    setView('dashboard');
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

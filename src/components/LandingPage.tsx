@@ -145,37 +145,18 @@ export const LandingPage: React.FC<Props> = ({ onStart, isAuthLoading }) => {
                   <button
                     type="submit"
                     disabled={isAuthLoading || !email}
-                    className="absolute right-2 top-2 bottom-2 px-6 rounded-full bg-slate-900 text-white font-bold text-sm flex items-center gap-2 hover:bg-black transition-all disabled:opacity-70 overflow-hidden group"
+                    className="absolute right-2 top-2 bottom-2 px-8 rounded-full bg-slate-900 text-white font-bold text-sm flex items-center gap-2 hover:bg-black transition-all disabled:opacity-70 overflow-hidden group"
                   >
                     {isAuthLoading ? (
                       <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
                     ) : (
                       <>
-                        <span>Get Link</span>
+                        <span>Enter Engine</span>
                         <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                       </>
                     )}
                   </button>
                 </div>
-
-                <div className="relative py-4">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-slate-200"></div>
-                  </div>
-                  <div className="relative flex justify-center text-[10px] font-black uppercase tracking-widest">
-                    <span className="bg-white px-4 text-slate-400">Or continue with</span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleGoogleSignIn}
-                  disabled={isAuthLoading}
-                  className="w-full py-5 rounded-full border-2 border-slate-100 font-bold text-slate-600 flex items-center justify-center gap-3 hover:bg-slate-50 transition-all"
-                >
-                  <Chrome className="w-5 h-5 text-emerald-500" />
-                  Sign in with Google
-                </button>
               </form>
 
               <div className="flex flex-col gap-4">
